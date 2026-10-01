@@ -121,6 +121,18 @@ python infer_image_compliance.py --image "C:\path\to\photo.webp" --ppe-model "C:
 
 Photo-compliance defaults to `--person-conf 0.20 --ppe-conf 0.30` to avoid labeling weak low-confidence detections as compliant PPE. Lower `--ppe-conf` (for example, `0.15`) to favor recall, at the cost of more false detections. `YES` means the detector found that PPE class in the expected body region; `NO` means no qualifying detection was associated. It does not prove the person is not wearing the item. This distinction matters especially for boots and gloves, whose test-set recall is weak.
 
+### Fine-Tune Person Detection
+
+The standard COCO `yolo26n.pt` person detector can find many standing/sitting people, but distant construction workers may be missed. The existing `construction-ppe` export has a separate `Person` annotation class. [prepare_construction_person.py](prepare_construction_person.py) copies only that class into `construction_person/`, preserving source images and leaving the original dataset and PPE model untouched. It contains 1,770 train, 239 validation, and 236 test person boxes.
+
+```powershell
+python prepare_construction_person.py --source construction-ppe --output construction_person
+python train.py --model yolo26n.pt --data construction_person/data.yaml --imgsz 640 --batch 2 --epochs 10 --device cpu --name yolo26n_person_construction_10ep
+python evaluate.py --model "C:\Users\Firdose\runs\detect\runs\ppe\yolo26n_person_construction_10ep\weights\best.pt" --data construction_person/data.yaml --split test --imgsz 640 --device cpu --name person_test
+```
+
+Pass the resulting person-only checkpoint alongside the unchanged PPE checkpoint to `infer_image_compliance.py` or `infer_video.py` via `--person-model`. This can improve people detection on similar industrial scenes. It only learns sitting, crouching, lying/sleeping, or other poses if those poses are present and correctly boxed in the training examples; the current construction labels are not a guarantee of sleeping-person coverage. Add representative, identity/video-disjoint pose examples if sleeping people are a required use case. Use `--slice-size 640` for far-away workers, and inspect for duplicate tile detections and missed/false PPE boxes.
+
 ## Tracker Benchmark
 
 ```powershell

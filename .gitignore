@@ -2,8 +2,11 @@
 __pycache__/
 *.py[cod]
 Fork Dataset/
+construction-ppe/
 ppe_video_split/
 ppe_lowres/
+construction_ppe_4class/
+construction_person/
 outputs/
 runs/
 *.pt
